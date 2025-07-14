@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Guardian</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+    <style>
+        /* Custom styling */
+        :root {
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+        
+        .emergency-btn {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        .video-thumbnail {
+            transition: all 0.3s ease;
+        }
+        
+        .video-thumbnail:hover {
+            transform: scale(1.05);
+        }
+        
+        .language-selector {
+            transition: all 0.3s ease;
+        }
+        
+        .language-selector:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .feature-card {
+                width: 100% !important;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header with language selector -->
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="https://placehold.co/50x50" alt="Safety Guardian logo - shield with a plus sign" class="mr-2">
+                <h1 class="text-2xl font-bold text-gray-800">Safety Guardian</h1>
+            </div>
+            <div class="relative group">
+                <button class="flex items-center px-4 py-2 bg-gray-200 rounded-lg">
+                    <span class="material-icons mr-2">language</span>
+                    <span id="current-language">English</span>
+                </button>
+                <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block z-50">
+                    <div class="py-1">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('en')">English</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('es')">Español</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('fr')">Français</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('de')">Deutsch</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('hi')">हिन्दी</a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-blue-50 language-selector" onclick="changeLanguage('zh')">中文</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Emergency SOS Section -->
+        <section class="mb-8 bg-white rounded-xl shadow-md p-6 relative">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <span class="material-icons mr-2 text-red-500">emergency</span>
+                <span id="emergency-title">Emergency SOS</span>
+            </h2>
+            <div class="flex justify-center">
+                <button id="sos-btn" class="emergency-btn bg-red-500 text-white font-bold py-4 px-6 rounded-full flex items-center justify-center">
+                    <span class="material-icons mr-2">warning</span>
+                    <span id="sos-btn-text">SOS Emergency</span>
+                </button>
+            </div>
+            <div id="emergency-contacts" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="col-span-1 bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-bold mb-2" id="police-contact">Nearest Police Station:</h3>
+                    <p id="police-info"></p>
+                </div>
+                <div class="col-span-1 bg-green-50 p-4 rounded-lg">
+                    <h3 class="font-bold mb-2" id="hospital-contact">Nearest Hospital:</h3>
+                    <p id="hospital-info"></p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-2" id="emergency-info">Press and hold for 3 seconds to send emergency alerts</p>
+        </section>
+
+        <!-- Location Tracking -->
+        <section class="mb-8 bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <span class="material-icons mr-2 text-blue-500">location_on</span>
+                <span id="location-title">Live Location Tracking</span>
+            </h2>
+            <div id="map" class="w-full h-64 rounded-lg overflow-hidden mb-4"></div>
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1"><span id="location-label">Current Location:</span> <span id="current-location">Loading...</span></p>
+                    <p class="text-sm text-gray-600"><span id="speed-label">Speed:</span> <span id="current-speed">0</span> km/h</p>
+                </div>
+                <button id="share-location" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <span class="material-icons mr-2">share</span>
+                    <span id="share-btn-text">Share Location</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Video Storage -->
+        <section class="mb-8 bg-white rounded-xl shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold flex items-center">
+                    <span class="material-icons mr-2 text-purple-500">video_library</span>
+                    <span id="video-title">Video Storage</span>
+                </h2>
+                <button id="record-video" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <span class="material-icons mr-2">videocam</span>
+                    <span id="record-btn-text">Record New Video</span>
+                </button>
+            </div>
+            <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Video thumbnails will be added here -->
+                <div class="border rounded-lg overflow-hidden video-thumbnail">
+                    <div class="relative pb-[56.25%]">
+                        <img src="https://placehold.co/400x225" alt="Sample video thumbnail showing city streets" class="absolute h-full w-full object-cover">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <button class="bg-white bg-opacity-75 rounded-full p-2 hover:bg-opacity-100">
+                                <span class="material-icons text-purple-500">play_arrow</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        <h3 class="font-semibold">Sample Video</h3>
+                        <p class="text-sm text-gray-500">2023-10-15 14:30</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Traffic Information -->
+        <section class="mb-8 bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <span class="material-icons mr-2 text-orange-500">traffic</span>
+                <span id="traffic-title">Traffic Alerts</span>
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h3 class="font-bold mb-2 flex items-center"><span class="material-icons mr-2 text-yellow-600">warning</span> <span id="incident-label">Incidents</span></h3>
+                    <ul id="traffic-incidents" class="text-sm space-y-2">
+                        <li>No reported incidents</li>
+                    </ul>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-bold mb-2 flex items-center"><span class="material-icons mr-2 text-blue-600">schedule</span> <span id="delays-label">Delays</span></h3>
+                    <ul id="traffic-delays" class="text-sm space-y-2">
+                        <li>No major delays</li>
+                    </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="font-bold mb-2 flex items-center"><span class="material-icons mr-2 text-green-600">directions_car</span> <span id="routes-label">Alternative Routes</span></h3>
+                    <ul id="traffic-routes" class="text-sm space-y-2">
+                        <li>No alternative routes needed</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h3 class="text-lg font-bold mb-3">Safety Guardian</h3>
+                    <p class="text-gray-400" id="footer-mission">Your personal safety companion for peace of mind wherever you go.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-3" id="quick-links">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white" id="contact-link">Contact</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white" id="privacy-link">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white" id="terms-link">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-3" id="support-title">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white" id="faq-link">FAQ</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white" id="feedback-link">Feedback</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-6 pt-6 text-center text-gray-400">
+                <p id="copyright">&copy; 2023 Safety Guardian. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Google Maps initialization
+        let map;
+        let marker;
+        let watchId;
+        let emergencyTimer;
+        let languages = {
+            en: {
+                appName: "Safety Guardian",
+                emergencyTitle: "Emergency SOS",
+                sosBtnText: "SOS Emergency",
+                emergencyInstructions: "Press and hold for 3 seconds to send emergency alerts",
+                emergencyResponse: "Emergency alert sent to nearest police station and hospital",
+                locationTitle: "Live Location Tracking",
+                locationLabel: "Current Location:",
+                speedLabel: "Speed:",
+                shareBtnText: "Share Location",
+                videoTitle: "Video Storage",
+                recordBtnText: "Record New Video",
+                trafficTitle: "Traffic Alerts",
+                incidentLabel: "Incidents",
+                delaysLabel: "Delays",
+                routesLabel: "Alternative Routes",
+                policeContact: "Nearest Police Station:",
+                hospitalContact: "Nearest Hospital:",
+                footerMission: "Your personal safety companion for peace of mind wherever you go.",
+                quickLinks: "Quick Links",
+                contactLink: "Contact",
+                privacyLink: "Privacy Policy",
+                termsLink: "Terms of Service",
+                supportTitle: "Support",
+                faqLink: "FAQ",
+                feedbackLink: "Feedback",
+                copyright: "© 2023 Safety Guardian. All rights reserved."
+            },
+            es: {
+                appName: "Guardián de Seguridad",
+                emergencyTitle: "SOS de Emergencia",
+                sosBtnText: "Emergencia SOS",
+                emergencyInstructions: "Presiona y mantén presionado durante 3 segundos para enviar alertas de emergencia",
+                emergencyResponse: "Alerta de emergencia enviada a la comisaría y hospital más cercanos",
+                locationTitle: "Seguimiento de Ubicación en Vivo",
+                locationLabel: "Ubicación Actual:",
+                speedLabel: "Velocidad:",
+                shareBtnText: "Compartir Ubicación",
+                videoTitle: "Almacenamiento de Video",
+                recordBtnText: "Grabar Nuevo Video",
+                trafficTitle: "Alertas de Tráfico",
+                incidentLabel: "Incidentes",
+                delaysLabel: "Retrasos",
+                routesLabel: "Rutas Alternativas",
+                policeContact: "Comisaría más cercana:",
+                hospitalContact: "Hospital más cercano:",
+                footerMission: "Tu compañero de seguridad personal para tranquilidad dondequiera que vayas.",
+                quickLinks: "Enlaces Rápidos",
+                contactLink: "Contacto",
+                privacyLink: "Política de Privacidad",
+                termsLink: "Términos de Servicio",
+                supportTitle: "Soporte",
+                faqLink: "Preguntas Frecuentes",
+                feedbackLink: "Comentarios",
+                copyright: "© 2023 Guardián de Seguridad. Todos los derechos reservados."
+            },
+            // Other languages would continue here...
+        };
+
+        // Initialize the map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: -34.397, lng: 150.644 },
+                zoom: 15,
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true
+            });
+
+            marker = new google.maps.Marker({
+                position: { lat: -34.397, lng: 150.644 },
+                map: map,
+                title: "Your Location"
+            });
+            
+            // Try HTML5 geolocation
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const pos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        // Update marker position
+                        marker.setPosition(pos);
+                        map.setCenter(pos);
+                        
+                        // Update location text
+                        document.getElementById("current-location").textContent = 
+                            `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+                            
+                        // Update speed if available
+                        if (position.coords.speed) {
+                            const speedKmph = Math.round(position.coords.speed * 3.6);
+                            document.getElementById("current-speed").textContent = speedKmph;
+                        }
+                        
+                        // Reverse geocode to get address
+                        reverseGeocode(pos);
+                    },
+                    (error) => {
+                        console.error("Geolocation error:", error);
+                        document.getElementById("current-location").textContent = 
+                            "Location access denied";
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 10000,
+                        timeout: 5000
+                    }
+                );
+            } else {
+                document.getElementById("current-location").textContent = 
+                    "Geolocation not supported";
+            }
+        }
+        
+        // Reverse geocoding to get address
+        function reverseGeocode(latLng) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: latLng }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    document.getElementById("current-location").textContent = 
+                        results[0].formatted_address;
+                } else {
+                    console.error("Geocoder failed:", status);
+                }
+            });
+        }
+        
+        // Find nearest police stations and hospitals
+        function findNearbyEmergencyServices(location) {
+            const service = new google.maps.places.PlacesService(map);
+            
+            // Find police stations
+            service.nearbySearch({
+                location: location,
+                radius: 2000,
+                keyword: "police station"
+            }, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results[0]) {
+                    const policeInfo = document.getElementById("police-info");
+                    policeInfo.innerHTML = `
+                        <div class="flex items-start mb-1">
+                            <span class="material-icons mr-2 text-blue-500">local_police</span>
+                            <div>
+                                <strong>${results[0].name}</strong><br>
+                                ${results[0].vicinity}<br>
+                                <span class="text-xs">${results[0].rating ? '★'.repeat(Math.round(results[0].rating)) : ''}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Find hospitals
+            service.nearbySearch({
+                location: location,
+                radius: 2000,
+                keyword: "hospital"
+            }, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results[0]) {
+                    const hospitalInfo = document.getElementById("hospital-info");
+                    hospitalInfo.innerHTML = `
+                        <div class="flex items-start mb-1">
+                            <span class="material-icons mr-2 text-green-500">local_hospital</span>
+                            <div>
+                                <strong>${results[0].name}</strong><br>
+                                ${results[0].vicinity}<br>
+                                <span class="text-xs">${results[0].rating ? '★'.repeat(Math.round(results[0].rating)) : ''}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        // Change language
+        function changeLanguage(lang) {
+            const elements = languages[lang];
+            if (!elements) return;
+            
+            document.getElementById("current-language").textContent = lang === "en" ? "English" :
+                                                                      lang === "es" ? "Español" : lang;
+            
+            // Update all text elements
+            Object.keys(elements).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+                        element.placeholder = elements[key];
+                    } else {
+                        element.textContent = elements[key];
+                    }
+                }
+            });
+        }
+        
+        // SOS Emergency Button
+        function setupEmergencyButton() {
+            const sosBtn = document.getElementById("sos-btn");
+            
+            sosBtn.addEventListener("mousedown", startEmergencyTimer);
+            sosBtn.addEventListener("touchstart", startEmergencyTimer);
+            
+            sosBtn.addEventListener("mouseup", cancelEmergency);
+            sosBtn.addEventListener("mouseleave", cancelEmergency);
+            sosBtn.addEventListener("touchend", cancelEmergency);
+        }
+        
+        function startEmergencyTimer() {
+            emergencyTimer = setTimeout(() => {
+                triggerEmergency();
+            }, 3000);
+        }
+        
+        function cancelEmergency() {
+            if (emergencyTimer) {
+                clearTimeout(emergencyTimer);
+                emergencyTimer = null;
+            }
+        }
+        
+        function triggerEmergency() {
+            // Show nearest emergency services
+            document.getElementById("emergency-contacts").classList.remove("hidden");
+            
+            // Get current location and send alerts
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    findNearbyEmergencyServices(pos);
+                    
+                    // In a real app, you would send an actual alert to emergency services here
+                    alert(document.getElementById("emergency-response") ? 
+                        document.getElementById("emergency-response").textContent : 
+                        "Emergency alert sent to nearest police station and hospital");
+                });
+            }
+        }
+        
+        // Share location
+        function setupShareButton() {
+            document.getElementById("share-location").addEventListener("click", () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        const pos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        const url = `https://www.google.com/maps/search/?api=1&query=${pos.lat},${pos.lng}`;
+                        
+                        // In a real app, you would implement proper sharing mechanism
+                        if (navigator.share) {
+                            navigator.share({
+                                title: "My Current Location",
+                                text: "Here's my current location",
+                                url: url
+                            }).catch(err => {
+                                console.log("Error sharing:", err);
+                                // Fallback to copying to clipboard
+                                copyToClipboard(url);
+                            });
+                        } else {
+                            // Fallback to copying to clipboard
+                            copyToClipboard(url);
+                        }
+                    });
+                }
+            });
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Link copied to clipboard");
+            }).catch(err => {
+                console.error("Could not copy text: ", err);
+            });
+        }
+        
+        // Video recording functionality
+        function setupVideoRecording() {
+            document.getElementById("record-video").addEventListener("click", () => {
+                // In a real app, you would implement actual video recording
+                alert("Video recording functionality would be implemented here");
+                
+                // Simulate adding a new video
+                const newVideo = {
+                    id: Date.now(),
+                    title: `Recorded Video ${new Date().toLocaleString()}`,
+                    timestamp: new Date().toISOString(),
+                    thumbnail: "https://placehold.co/400x225"
+                };
+                
+                addVideoToGallery(newVideo);
+            });
+        }
+        
+        function addVideoToGallery(video) {
+            const container = document.getElementById("video-container");
+            
+            const videoElement = document.createElement("div");
+            videoElement.className = "border rounded-lg overflow-hidden video-thumbnail";
+            videoElement.innerHTML = `
+                <div class="relative pb-[56.25%]">
+                    <img src="${video.thumbnail}" alt="Video thumbnail of recorded footage" class="absolute h-full w-full object-cover">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <button class="bg-white bg-opacity-75 rounded-full p-2 hover:bg-opacity-100">
+                            <span class="material-icons text-purple-500">play_arrow</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-3">
+                    <h3 class="font-semibold">${video.title}</h3>
+                    <p class="text-sm text-gray-500">${new Date(video.timestamp).toLocaleString()}</p>
+                </div>
+            `;
+            
+            container.prepend(videoElement);
+        }
+        
+        // Traffic data simulation
+        function updateTrafficData() {
+            // In a real app, you would fetch actual traffic data from an API
+            setTimeout(() => {
+                const incidents = [
+                    "Accident reported on Main Street - Avoid area",
+                    "Road construction on Highway 101 - Expect delays"
+                ];
+                
+                const delays = [
+                    "15 min delay on Oak Avenue due to heavy traffic",
+                    "10 min delay on City Center Bridge"
+                ];
+                
+                const routes = [
+                    "Use Elm Street as alternate for Main Street",
+                    "Take Westside Expressway to bypass Highway 101 construction"
+                ];
+                
+                const incidentsList = document.getElementById("traffic-incidents");
+                incidentsList.innerHTML = incidents.map(i => `<li class="flex items-start"><span class="material-icons mr-1 text-yellow-600 text-sm">warning</span> ${i}</li>`).join("");
+                
+                const delaysList = document.getElementById("traffic-delays");
+                delaysList.innerHTML = delays.map(d => `<li class="flex items-start"><span class="material-icons mr-1 text-blue-600 text-sm">schedule</span> ${d}</li>`).join("");
+                
+                const routesList = document.getElementById("traffic-routes");
+                routesList.innerHTML = routes.map(r => `<li class="flex items-start"><span class="material-icons mr-1 text-green-600 text-sm">directions</span> ${r}</li>`).join("");
+            }, 2000);
+        }
+        
+        // Initialize everything when the page loads
+        document.addEventListener("DOMContentLoaded", () => {
+            initMap();
+            setupEmergencyButton();
+            setupShareButton();
+            setupVideoRecording();
+            updateTrafficData();
+            
+            // Initialize with English language
+            changeLanguage('en');
+        });
+    </script>
+</body>
+</html>
